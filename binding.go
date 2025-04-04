@@ -20,6 +20,10 @@ type Binding struct {
 }
 
 func NewBinding(raw interface{}) Binding {
+	s, parsable := raw.(string)
+	if parsable {
+		return Binding{root: ast.NewRaw(string(s))}
+	}
 	data, _ := json.Marshal(raw)
 	return Binding{root: ast.NewRaw(string(data))}
 }
