@@ -2,6 +2,8 @@
 
 ![banner](./z:binding.png)
 
+### 🥳 Try Now
+
 ```go
 go get github.com/ziqorg/binding
 ```
