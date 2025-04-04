@@ -1,10 +1,30 @@
-# 🍿 Binding
+### 🍿 Binding
 
 ```go
 go get github.com/ziqorg/binding
 ```
 
-# 🤩 Feel The Magic
+### 🫰 Features
+
+1. ⛏️ Minimal Package, 4KB
+2. 👉 JSONPath Getter & Setter with [bytedance/sonic](https://github.com/bytedance/sonic)
+3. ❤️ Ast Condition Evaluation / Expression Parser with [expr-lang/expr](https://github.com/expr-lang/expr)
+
+### 🤩 Feel The Magic
+
+#### Getter & Setter
+
+```go
+x := binding.NewBinding(`{"key1": {"nested_1": 1}}`)
+x.Get("key1.nested_1") // (1, nil)
+
+x.Set("key1.nested_1", true)
+x.Get("key1.nested_1") // (true, nil)
+```
+
+#### Evaluate
+
+See: [expr-lang/language-definition](https://expr-lang.org/docs/language-definition)
 
 ```go
 x := binding.NewBinding(`{"key1": {"nested_1": [1, 2, true]}}`)
