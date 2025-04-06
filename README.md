@@ -1,6 +1,6 @@
 ### 🍿 Binding
 
-![banner](./z:binding.png)
+![banner](./binding.png)
 
 ### 🥳 Try Now
 
