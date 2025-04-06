@@ -10,7 +10,7 @@ func autoParse(input string) interface{} {
 	input = strings.TrimSpace(input)
 
 	// Check if it's a comma-separated list
-	if strings.Contains(input, ",") {
+	if strings.Contains(input, ",") && strings.HasPrefix(input, "[") && strings.HasSuffix(input, "]") {
 		parts := strings.Split(input, ",")
 		var parsed []interface{}
 		for _, part := range parts {
