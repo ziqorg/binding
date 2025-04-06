@@ -1,4 +1,4 @@
-package binding
+package main
 
 import (
 	"testing"
@@ -30,7 +30,7 @@ func TestBindings(t *testing.T) {
 	binding := NewBinding(result)
 
 	bind, err := binding.Get("input.urn")
-	assert.Equal(t, bind, "1234")
+	assert.Equal(t, bind, 1234)
 	assert.NoError(t, err)
 
 	bind, err = binding.Get("not_a_key.ggwp")

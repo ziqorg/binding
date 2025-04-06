@@ -1,4 +1,4 @@
-package binding
+package main
 
 import (
 	"encoding/json"
@@ -65,7 +65,7 @@ func (bind *Binding) Evaluate(condition string) (bool, error) {
 
 // Get
 // Get("input.dataset.owners")
-func (bind *Binding) Get(path string) (string, error) {
+func (bind *Binding) Get(path string) (interface{}, error) {
 	splitPath := strings.Split(path, ".")
 	node := &bind.root
 	for _, p := range splitPath {
@@ -74,7 +74,13 @@ func (bind *Binding) Get(path string) (string, error) {
 			return "", errors.New("no key named: " + p)
 		}
 	}
-	return node.Raw()
+	raw, err := node.Raw()
+	if err != nil {
+		return "", err
+	}
+	raw = strings.TrimPrefix(raw, "\"")
+	raw = strings.TrimSuffix(raw, "\"")
+	return autoParse(raw), nil
 }
 
 // Set
