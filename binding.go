@@ -10,7 +10,7 @@ import (
 )
 
 // PP - Pretty Print Anything
-func PP(i interface{}) string {
+func pp(i interface{}) string {
 	s, _ := json.MarshalIndent(i, "", "\t")
 	return string(s)
 }
@@ -37,7 +37,21 @@ func (bind *Binding) GetRoot() (map[string]interface{}, error) {
 		return make(map[string]interface{}), err
 	}
 	var res map[string]interface{}
-	_ = json.Unmarshal([]byte(r), &res)
+	err = json.Unmarshal([]byte(r), &res)
+	if err != nil {
+		return make(map[string]interface{}), err
+	}
+	return res, nil
+}
+
+// Flatten
+// Recursively flatten AST into dot-separated map
+func (bind *Binding) Flatten() (map[string]interface{}, error) {
+	root, err := bind.GetRoot()
+	if err != nil {
+		return make(map[string]interface{}), nil
+	}
+	res := flattenMap(root, "")
 	return res, nil
 }
 
@@ -66,12 +80,14 @@ func (bind *Binding) Evaluate(condition string) (bool, error) {
 // Get
 // Get("input.dataset.owners")
 func (bind *Binding) Get(path string) (interface{}, error) {
-	splitPath := strings.Split(path, ".")
 	node := &bind.root
-	for _, p := range splitPath {
-		node = node.Get(p)
-		if node.Check() != nil {
-			return "", errors.New("no key named: " + p)
+	if path != "." {
+		splitPath := strings.Split(path, ".")
+		for _, p := range splitPath {
+			node = node.Get(p)
+			if node.Check() != nil {
+				return "", errors.New("no key named: " + p)
+			}
 		}
 	}
 	raw, err := node.Raw()
@@ -83,10 +99,20 @@ func (bind *Binding) Get(path string) (interface{}, error) {
 	return autoParse(raw), nil
 }
 
+func (bind *Binding) GetMap(path string) (map[string]interface{}, error) {
+	b, err := bind.Get(path)
+	if err != nil {
+		return make(map[string]interface{}), err
+	}
+	var res map[string]interface{}
+	_ = json.Unmarshal([]byte((b).(string)), &res)
+	return res, nil
+}
+
 // Set
 // Set("check_duplicate.duplicate", true)
 func (bind *Binding) Set(path string, value interface{}) (string, error) {
-	var newValueNode = ast.NewRaw(PP(value))
+	var newValueNode = ast.NewRaw(pp(value))
 	if newValueNode.Check() != nil {
 		return "", errors.New("invalid value")
 	}
@@ -109,6 +135,18 @@ func (bind *Binding) Set(path string, value interface{}) (string, error) {
 			}
 		}
 		node = node.Get(p)
+	}
+	return "ok", nil
+}
+
+func (bind *Binding) MergeMap(mp map[string]interface{}) (string, error) {
+	newBinding := NewBinding(mp)
+	rootMap, err := newBinding.GetRoot()
+	if err != nil {
+		return "", err
+	}
+	for k, v := range rootMap {
+		_, _ = bind.Set(k, v)
 	}
 	return "ok", nil
 }

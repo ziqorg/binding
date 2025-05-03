@@ -43,3 +43,29 @@ func autoParseSingle(input string) interface{} {
 	// Default to string
 	return input
 }
+
+func flattenMap(input map[string]interface{}, prefix string) map[string]interface{} {
+	flatMap := make(map[string]interface{})
+
+	for key, value := range input {
+		// Create the new key by combining the prefix and the current key
+		newKey := key
+		if prefix != "" {
+			newKey = prefix + "." + key
+		}
+
+		// If the value is a nested map, recurse
+		switch v := value.(type) {
+		case map[string]interface{}:
+			// Recursively flatten the nested map
+			for k, val := range flattenMap(v, newKey) {
+				flatMap[k] = val
+			}
+		default:
+			// Otherwise, just add the key-value pair to the flat map
+			flatMap[newKey] = value
+		}
+	}
+
+	return flatMap
+}
