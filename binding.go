@@ -3,65 +3,51 @@ package binding
 import (
 	"encoding/json"
 	"errors"
-	"strings"
 
-	"github.com/bytedance/sonic/ast"
+	"github.com/cloudwego/gjson"
 	"github.com/expr-lang/expr"
+	"github.com/tidwall/sjson"
 )
 
-// PP - Pretty Print Anything
-func pp(i interface{}) string {
-	s, _ := json.MarshalIndent(i, "", "\t")
+func marshal(i interface{}) string {
+	s, _ := json.Marshal(i)
 	return string(s)
 }
 
+func getRaw(raw gjson.Result) interface{} {
+	return raw.Value()
+}
+
 type Binding struct {
-	root ast.Node
+	root gjson.Result
 }
 
 func NewBinding(raw interface{}) Binding {
-	s, parsable := raw.(string)
-	if parsable {
-		return Binding{root: ast.NewRaw(string(s))}
+	if s, ok := raw.(string); ok {
+		return Binding{
+			root: gjson.Parse(s),
+		}
 	}
-	data, _ := json.Marshal(raw)
-	return Binding{root: ast.NewRaw(string(data))}
+	return Binding{
+		root: gjson.Parse(marshal(raw)),
+	}
 }
 
 // GetRoot
 // Get root state -> json
-func (bind *Binding) GetRoot() (map[string]interface{}, error) {
-	r, err := bind.root.Raw()
-
-	if err != nil {
-		return make(map[string]interface{}), err
-	}
-	var res map[string]interface{}
-	err = json.Unmarshal([]byte(r), &res)
-	if err != nil {
-		return make(map[string]interface{}), err
-	}
-	return res, nil
+func (bind *Binding) GetRoot() gjson.Result {
+	return bind.root.Get("@this")
 }
 
-// Flatten
-// Recursively flatten AST into dot-separated map
-func (bind *Binding) Flatten() (map[string]interface{}, error) {
-	root, err := bind.GetRoot()
-	if err != nil {
-		return make(map[string]interface{}), nil
-	}
-	res := flattenMap(root, "")
-	return res, nil
+func (bind *Binding) GetRawRoot() interface{} {
+	root := bind.GetRoot()
+	return getRaw(root)
 }
 
 // Evaluate
 // bind.Evaluate("input.abc == 'abc'") (true, nil)
 func (bind *Binding) Evaluate(condition string) (bool, error) {
-	state, err := bind.GetRoot()
-	if err != nil {
-		return false, err
-	}
+	state := bind.GetRawRoot()
 	program, err := expr.Compile(condition, expr.Env(state))
 	if err != nil {
 		return false, err
@@ -79,74 +65,21 @@ func (bind *Binding) Evaluate(condition string) (bool, error) {
 
 // Get
 // Get("input.dataset.owners")
-func (bind *Binding) Get(path string) (interface{}, error) {
-	node := &bind.root
-	if path != "." {
-		splitPath := strings.Split(path, ".")
-		for _, p := range splitPath {
-			node = node.Get(p)
-			if node.Check() != nil {
-				return "", errors.New("no key named: " + p)
-			}
-		}
-	}
-	raw, err := node.Raw()
-	if err != nil {
-		return "", err
-	}
-	raw = strings.TrimPrefix(raw, "\"")
-	raw = strings.TrimSuffix(raw, "\"")
-	return autoParse(raw), nil
+func (bind *Binding) Get(path string) gjson.Result {
+	return bind.root.Get(path)
 }
 
-func (bind *Binding) GetMap(path string) (map[string]interface{}, error) {
-	b, err := bind.Get(path)
-	if err != nil {
-		return make(map[string]interface{}), err
-	}
-	var res map[string]interface{}
-	_ = json.Unmarshal([]byte((b).(string)), &res)
-	return res, nil
+func (bind *Binding) GetRaw(path string) interface{} {
+	return getRaw(bind.Get(path))
 }
 
 // Set
 // Set("check_duplicate.duplicate", true)
 func (bind *Binding) Set(path string, value interface{}) (string, error) {
-	var newValueNode = ast.NewRaw(pp(value))
-	if newValueNode.Check() != nil {
-		return "", errors.New("invalid value")
-	}
-
-	splitPath := strings.Split(path, ".")
-	splitPathLen := len(splitPath)
-	node := &bind.root
-	for i, p := range splitPath {
-		if i == splitPathLen-1 {
-			_, err := node.Set(p, newValueNode)
-			if err != nil {
-				return "", err
-			}
-			break
-		}
-		if node.Get(p).Check() != nil {
-			_, err := node.Set(p, ast.NewObject([]ast.Pair{}))
-			if err != nil {
-				return "", err
-			}
-		}
-		node = node.Get(p)
-	}
-	return "ok", nil
-}
-
-func (bind *Binding) MergeMap(mp map[string]interface{}) (string, error) {
-	newBinding := NewBinding(mp)
-	rootMap, err := newBinding.GetRoot()
+	setter, err := sjson.Set(bind.root.String(), path, value)
 	if err != nil {
 		return "", err
 	}
-	for k, v := range rootMap {
-		_, _ = bind.Set(k, v)
-	}
-	return "ok", nil
+	bind.root = NewBinding(setter).root
+	return setter, nil
 }

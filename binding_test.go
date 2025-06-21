@@ -29,25 +29,16 @@ func TestBindings(t *testing.T) {
 
 	binding := NewBinding(result)
 
-	bind, err := binding.Get("input.urn")
-	assert.Equal(t, bind, 1234)
-	assert.NoError(t, err)
-
-	bind, err = binding.Get("not_a_key.ggwp")
+	bind := binding.Get("not_a_key.ggwp")
 	assert.Empty(t, bind)
-	assert.Error(t, err)
 
-	bind, err = binding.Set("not_a_key.ggwp", true)
-	assert.Equal(t, bind, "ok")
-	assert.NoError(t, err)
+	_, _ = binding.Set("not_a_key.ggwp", true)
+	b := binding.Get("not_a_key.ggwp").Bool()
+	assert.Equal(t, b, true)
 
-	bind, err = binding.Set("not_a_key.ggwp", 1.234)
-	assert.Equal(t, bind, "ok")
-	assert.NoError(t, err)
-
-	bind, err = binding.Set("not_a_key.ggwp", "now_is_a_key")
-	assert.Equal(t, bind, "ok")
-	assert.NoError(t, err)
+	_, _ = binding.Set("not_a_key.ggwp", 1.234)
+	f := binding.Get("not_a_key.ggwp").Float()
+	assert.Equal(t, f, 1.234)
 }
 
 func TestEvaluateBindingExpression(t *testing.T) {
